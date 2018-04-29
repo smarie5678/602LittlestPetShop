@@ -1,0 +1,67 @@
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Properties;
+
+public class Cashier {
+
+private int cashierID;
+private String username;
+private String password;
+private LocalDateTime lastLogOnDateTime = null;
+private LocalDateTime lastLogOffDateTime = null;
+private boolean loggedin = false;
+
+private static HashMap<String, Cashier> cashierMap = new HashMap<>();
+
+Cashier(String username, String password) {
+		cashierID = username.hashCode();
+		this.username = username;
+		this.password = password;
+		cashierMap.put(username, this);
+	}
+
+public static void initialize() {
+	//loads 
+	
+	int count = parseInt(Cashier.getProperty("cashier.count", "1"));
+	for (int index = 0; index < count; index++) {
+		String prefix = "cashier." + index + ".";
+		String username = Cashier.getProperty(prefix + "username");
+		String password = Cashier.getProperty(prefix + "password");
+		if (username != null && password != null) {
+			new Cashier(username, password);
+		}
+	}
+public static void finalize() {
+	//stores the dates and times along with the password/username
+}
+}
+
+public String getCashierID() {
+	return Integer.toString(cashierID);
+}
+
+public boolean login(String username, String password) {
+	Cashier cashier = cashierMap.get(username); 
+	if(loggedin || cashier == null || cashier.password != password)
+		return false;
+	lastLogOnDateTime = LocalDateTime.now();
+	loggedin = true;
+	return true;
+}
+
+public void logout() {
+	lastLogOffDateTime = LocalDateTime.now();
+	loggedin = false;
+}
+
+public String logOnDateTime() {
+	return lastLogOnDateTime == null ? "N/A" : lastLogOnDateTime.toString();	
+}
+
+public String logOffDateTime() {
+	return lastLogOffDateTime == null ? "N/A" : lastLogOffDateTime.toString();	
+}
+
+
+}
