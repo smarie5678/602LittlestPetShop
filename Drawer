@@ -1,0 +1,67 @@
+public class Drawer {
+	static double drawerAmount;
+	static int numberOfSales = 0;
+	static int numberOfReturns = 0;
+	static int managerDeposits = 0;
+	static int managerWithdrawals = 0;
+	private static final double THRESHOLD = 300.00;
+
+
+	Drawer() {
+		drawerAmount = 0.0;
+	}
+
+	Drawer(double drawerAmount) {
+		this.drawerAmount = drawerAmount;
+	}
+
+	public static double updateDrawerFromSale( double payment) {
+		drawerAmount = drawerAmount + payment;
+		numberOfSales++;
+		if (drawerAmount > THRESHOLD) {
+			double pullAmount = drawerAmount - THRESHOLD;
+			managerPull(pullAmount);
+		}
+		return drawerAmount;
+	}
+
+	private static void managerDeposit(double amount) {
+		drawerAmount = drawerAmount + amount;
+		managerDeposits++;
+	}
+	
+	private static void managerPull(double pullAmount ) {
+		drawerAmount = drawerAmount - pullAmount;
+		managerWithdrawals++;
+	}
+
+	public static double updateDrawerFromReturn(double payment) {
+		if (payment > drawerAmount) {
+			managerDeposit(200.00);
+			updateDrawerFromReturn(payment);
+		}
+
+		else {
+			drawerAmount = drawerAmount - payment;
+			numberOfReturns++;
+		}	
+		if (drawerAmount > THRESHOLD) {
+			double pullAmount = drawerAmount - THRESHOLD;
+			managerPull(pullAmount);
+		}
+		return drawerAmount;
+	}
+
+	public static void main(String[] args) {
+		Drawer drawer = new Drawer (100.00);
+		updateDrawerFromSale(100.00);
+		System.out.println(drawerAmount);
+		updateDrawerFromReturn(50.00);
+		System.out.println(drawerAmount);
+		updateDrawerFromReturn(.00);
+		System.out.println(drawerAmount);
+		System.out.println(numberOfSales);
+		System.out.println(numberOfReturns);
+		System.out.println(managerDeposits);
+	}
+}
