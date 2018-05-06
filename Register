@@ -1,0 +1,106 @@
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Properties;
+
+public class Register {
+
+	private int registerID;
+	private Cashier loggedinCashier = null;
+
+	private static HashMap<Integer, Register> registerMap = new HashMap<>(); //maps register ID to Register instance
+	private static HashMap<Integer, Register> cashierMap = new HashMap<>(); //maps cashier ID to Register instance
+
+	static Properties defaultProperties = new Properties();
+
+	static {
+
+		try {
+			InputStream input = new FileInputStream(Register.class.getName().toLowerCase() + "-default.properties");
+			defaultProperties.load(input);
+		} catch (IOException e) {
+			defaultProperties.setProperty("register.count", "0");
+		}
+
+	}
+
+	public Register() {
+		this(registerMap.size() + 1, 0); //in all cases second constructor is called and does the work of putting into maps, has concurrency issues 
+	}
+
+	private Register( int registerID, int cashierID) {
+		this.registerID = registerID;
+		registerMap.put(registerID, this);
+		if (cashierID != 0) {
+			cashierMap.put(cashierID, this);
+			loggedinCashier = Cashier.findCashierbyID(cashierID);
+		}
+	}
+
+	public int getRegisterID() {
+		return registerID;
+	}
+
+
+	public static void initializer() throws IOException {
+
+		Properties properties = new Properties(defaultProperties);
+
+		try {
+			InputStream input = new FileInputStream(Register.class.getName().toLowerCase() + ".properties");
+			properties.load(input);
+		}
+		catch (FileNotFoundException e) {
+		}
+		catch (IOException e) {
+			throw e;
+		}
+
+		int count = Integer.parseInt(properties.getProperty("register.count", "1").trim());
+		for (int index = 0; index < count; index++) {
+			String prefix = "register." + index + ".";
+			int registerID = Integer.parseInt(properties.getProperty(prefix + "registerID").trim());
+			int cashierID = Integer.parseInt(properties.getProperty(prefix + "cashierID").trim());
+			new Register(registerID, cashierID); //good example of public vs private
+		}
+	}
+
+	public static void finalizer() throws IOException {
+
+		Properties properties = new Properties();
+		properties.setProperty("register.count", registerMap.size() + "");
+
+		int index = 0;
+		for (Register register : registerMap.values()) { 
+			String prefix = "register." + index++ + ".";
+			properties.setProperty(prefix + "registerID", register.getRegisterID() + "");
+			properties.setProperty(prefix + "cashierID", (register.loggedinCashier != null ? register.loggedinCashier.getCashierID() : 0) + ""); //if then use
+		}
+
+		OutputStream output = new FileOutputStream(Register.class.getName().toLowerCase() + ".properties");
+		properties.store(output, null);
+	}
+
+
+
+	public static Register findRegisterByID(int registerID) {
+		return registerMap.get(registerID);
+	}
+
+	public static Register findRegisterForCashier(int cashierID) {
+		return cashierMap.get(cashierID);
+	}
+
+	public static void main(String[] args) {
+		try {
+			initializer();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+}
