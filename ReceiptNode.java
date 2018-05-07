@@ -42,4 +42,9 @@ public class ReceiptNode {
 		return transQuantity;
 	}
 	
+	public String toString() {
+		String s = element.getDescription() + "\t" + element.getPrice() + "\t" + transQuantity + "\t" + "Total: " + "\t" + (element.getPrice()*transQuantity) + "\n";
+		return s;
+	}
+	
 }
