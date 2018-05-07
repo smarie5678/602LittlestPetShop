@@ -9,22 +9,21 @@ package possystem;
  *
  * @author russelndip
  */
-public class Inventory implements Reports {
+public class Inventory{
+    Item root= null;
+        Item parent;
+        Item current;
     //create a inventory binary tree by creating and writing to a file.
     public Inventory()
     {
        
-        
-        
-               
-  
+       
+      
     }
     //adds items i
-    public void addItem(double upc, String descr, int quantity, double price)
+    public void addItem (double upc, String descr, int quantity, double price)
     {
-         Item root= null;
-        Item parent;
-        Item current;
+         
         
         if(root == null)
             root = new Item(upc, descr, quantity, price);
@@ -32,19 +31,19 @@ public class Inventory implements Reports {
         {
             current = root;
             while (current !=null)
-                if (upc < current.getSkew())
+                if (upc < current.getSku())
                 {
                     parent = current;
                     current = current.left;
                 }
             
-                else if (upc > current.getSkew())
+                else if (upc > current.getSku())
                 {
                     parent = current;
                     current = current.right;
                 
             
-            if (upc < parent.getSkew())
+            if (upc < parent.getSku())
                 parent.left = new Item(upc, descr, quantity, price);
             else
                 parent.right = new Item(upc, descr, quantity, price);
@@ -57,11 +56,42 @@ public class Inventory implements Reports {
         
     }
     
-    public void printInventoryReport()
+    public Item findItem(double upc){
+        Item current = root;
+        
+        while(current.getSku() != upc)
+            
+        {
+            if (upc < current.getSku())
+            {
+                current = current.left;
+            }
+            else {
+                current = current.right;
+            }
+            if (current ==null)
+            return null;
+        }
+         return current;
+         
+       
+                   
+                    
+                    
+    }
+    
+    public void printInventoryReport(Item root)
     {
+        Item current= root;
+        if ( current == null)
+           
+            printInventoryReport(current.left);
+     
+        System.out.print(current +"/n");
+        printInventoryReport(current.right);
+        
+        
         
     }
-    public void printRegisterReport(){};
     
-    public void printCashierReport(){};
 }
