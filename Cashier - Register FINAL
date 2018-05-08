@@ -1,0 +1,347 @@
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+public class Cashier {
+
+	private int cashierID;
+	private String username;
+	private String password;
+	private LocalDateTime lastLogOnDateTime = null;
+	private LocalDateTime lastLogOffDateTime = null;
+	Register register = null;
+
+	private static Map<String, Cashier> cashierMap = new HashMap<>();
+
+	static Properties defaultProperties = new Properties();
+
+	static {
+
+		try {
+			InputStream input = new FileInputStream(Cashier.class.getName().toLowerCase() + "-default.properties");
+			defaultProperties.load(input);
+		} catch (IOException e) {
+			defaultProperties.setProperty("cashier.count", "0");
+		}
+
+	}
+
+	private Cashier(String username, String password) {
+		cashierID = username.hashCode();
+		this.username = username;
+		this.password = password;
+		cashierMap.put(username, this);
+	}
+
+	public String getLogOn() {
+		return lastLogOnDateTime.toString();
+	}
+
+	public String getLogOff() {
+		return lastLogOffDateTime.toString();
+	}
+
+
+	public static void initializer() throws IOException {
+
+		Properties properties = new Properties(defaultProperties);
+
+		try {
+			InputStream input = new FileInputStream(Cashier.class.getName().toLowerCase() + ".properties");
+			properties.load(input);
+		}
+		catch (FileNotFoundException e) {
+		}
+		catch (IOException e) {
+			throw e;
+		}
+
+		int count = Integer.parseInt(properties.getProperty("cashier.count", "1").trim());
+		for (int index = 0; index < count; index++) {
+			String prefix = "cashier." + index + ".";
+			String username = properties.getProperty(prefix + "username").trim();
+			String password = properties.getProperty(prefix + "password").trim();
+			String lastLogOnTime = properties.getProperty(prefix + "lastLogOnTime".trim());
+			String lastLogOffTime = properties.getProperty(prefix + "lastLogOffTime".trim());
+			if (username != null && password != null) {
+				new Cashier(username, password);
+			}
+		}
+	}
+
+	public static void finalizer() throws IOException {
+
+		Properties properties = new Properties();
+		properties.setProperty("cashier.count", cashierMap.size() + "");
+
+		int index = 0;
+		for (Cashier cashier : cashierMap.values()) { 
+			String prefix = "cashier." + index++ + ".";
+			properties.setProperty(prefix + "username", cashier.username);
+			properties.setProperty(prefix + "password", cashier.password);
+			properties.setProperty(prefix + "lastLogOnTime", cashier.getLogOn());
+			properties.setProperty(prefix + "lastLogOffTime", cashier.getLogOff());
+		}
+
+		OutputStream output = new FileOutputStream(Cashier.class.getName().toLowerCase() + ".properties");
+		properties.store(output, null);
+	}
+
+	public static Cashier findCashierbyID( int cashierID) {
+		return cashierMap.get(cashierID);
+	}
+
+	public static Cashier findCashierbyUsername (String username) {
+		return cashierMap.get(username);
+	}
+
+
+	public  String getCashierID() {
+		return Integer.toString(cashierID);
+	}
+	
+	public String getUsername() {
+		return username;
+	}
+	
+	public LocalDateTime getLastLogOnDateTime() {
+		return lastLogOnDateTime;
+	}
+	
+	public LocalDateTime getLastLogOffDateTime() {
+		return lastLogOffDateTime;
+	}
+	
+	public void setRegister(Register register) {
+		register = this.register;
+	}
+
+	public static Cashier login(String username, String password) {
+		Cashier cashier = cashierMap.get(username);
+		if(cashier == null || cashier.register != null || cashier.password != password)
+			return null;
+		cashier.lastLogOnDateTime = LocalDateTime.now();
+		cashier.register = null;
+		return cashier;
+	}
+
+	public void logout() {
+		lastLogOffDateTime = LocalDateTime.now();
+		register = null;
+	}
+
+	public String logOnDateTime() {
+		return lastLogOnDateTime == null ? "N/A" : lastLogOnDateTime.toString();	
+	}
+
+	public void updateDrawerFromSale( double payment) {
+		updateDrawerFromSale(payment);
+	}
+	
+	public void updateDrawerFromReturn(double payment) { 
+		register.updateDrawerFromReturn(payment);
+	}
+
+	public String logOffDateTime() {
+		return lastLogOffDateTime == null ? "N/A" : lastLogOffDateTime.toString();	
+	}
+	
+	public void cashierReport() {
+		System.out.println("Shift information for: " + getCashierID());
+		System.out.println("Logged in at: " + getLastLogOnDateTime());
+		System.out.println("logged off at: " + getLastLogOffDateTime());
+	}
+}
+
+
+///////////////////////////////////////////////
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+public class Register { //add drawer variables to properties file
+
+	private int registerID;
+	private Cashier loggedinCashier = null;
+	public boolean registerOpened = false;
+	private	static double drawerAmount = 0;
+	private double startingDrawerAmount;
+	private double finalDrawerAmount = 0;
+	private int numberOfSales = 0;
+	private int numberOfReturns = 0;
+	private int managerDeposits = 0;
+	private int managerWithdrawals = 0;
+	
+	
+	private static final double CASH_LIMIT = 400.00;
+	private static final double MIN_CASH_DEPOSIT = 200.00;
+
+
+	private static Map<Integer, Register> registerMap = new HashMap<>(); //maps register ID to Register instance
+	private static Map<Integer, Register> cashierMap = new HashMap<>(); //maps cashier ID to Register instance
+
+	static Properties defaultProperties = new Properties();
+
+	static {
+
+		try {
+			InputStream input = new FileInputStream(Register.class.getName().toLowerCase() + "-default.properties");
+			defaultProperties.load(input);
+		} catch (IOException e) {
+			defaultProperties.setProperty("register.count", "0");
+		}
+	}
+
+	public Register() {
+		this(registerMap.size() + 1, 0); //in all cases second constructor is called and does the work of putting into maps, has concurrency issues 
+	}
+
+	private Register( int registerID, int cashierID) {
+		this.registerID = registerID;
+		registerMap.put(registerID, this);
+		if (cashierID != 0) {
+			cashierMap.put(cashierID, this);
+			loggedinCashier = Cashier.findCashierbyID(cashierID);
+		}
+	}	
+	
+	public static void initializer() throws IOException {
+
+		Properties properties = new Properties(defaultProperties);
+
+		try {
+			InputStream input = new FileInputStream(Register.class.getName().toLowerCase() + ".properties");
+			properties.load(input);
+		}
+		catch (FileNotFoundException e) {
+		}
+		catch (IOException e) {
+			throw e;
+		}
+
+		int count = Integer.parseInt(properties.getProperty("register.count", "1").trim());
+		for (int index = 0; index < count; index++) {
+			String prefix = "register." + index + ".";
+			int registerID = Integer.parseInt(properties.getProperty(prefix + "registerID").trim());
+			int cashierID = Integer.parseInt(properties.getProperty(prefix + "cashierID").trim());
+			new Register(registerID, cashierID); //good example of public vs private
+		}
+	}
+
+	public static void finalizer() throws IOException {
+
+		Properties properties = new Properties();
+		properties.setProperty("register.count", registerMap.size() + "");
+		properties.setProperty("register.count", cashierMap.size() + "");
+
+
+		int index = 0;
+		for (Register register : registerMap.values()) { 
+			String prefix = "register." + index++ + ".";
+			properties.setProperty(prefix + "registerID", register.getRegisterID() + "");
+			properties.setProperty(prefix + "cashierID", (register.loggedinCashier != null ? register.loggedinCashier.getCashierID() : 0) + ""); //if then use
+		}
+
+		OutputStream output = new FileOutputStream(Register.class.getName().toLowerCase() + ".properties");
+		properties.store(output, null);
+	}
+	
+	public void login(String username, String password) {
+		Cashier	cashier = Cashier.login(username, password);
+		cashier.setRegister(this);
+	}
+	
+
+	public static Register findRegisterByID(int registerID) {
+		return registerMap.get(registerID);
+	}
+
+	public static Register findRegisterForCashier(int cashierID) {
+		return cashierMap.get(cashierID);
+	}
+	
+	public int getRegisterID() {
+		return registerID;
+	}
+	
+	public int getNumberOfSales() {
+		return numberOfSales;
+	}
+	
+	public int getNumberOfReturns() {
+		return numberOfReturns;
+	}
+	
+	public double getFinalDrawerAmount() {
+		return finalDrawerAmount;
+	}
+	
+	public void openRegister(double amount) {
+		if (registerOpened == false) {
+			managerDeposit(amount);
+			startingDrawerAmount = drawerAmount;
+			registerOpened = true;
+		}
+	}
+	
+	public void closeRegister() {
+		if (registerOpened == true) {
+			finalDrawerAmount = drawerAmount;
+			registerOpened = false;
+		registerReport();
+		}
+	}
+
+	private void managerDeposit(double amount) {
+		drawerAmount = drawerAmount + amount;
+		managerDeposits++;
+	}
+	
+	private void managerPull(double pullAmount ) {
+		drawerAmount = drawerAmount - pullAmount;
+		managerWithdrawals++;
+	}
+	
+	public double updateDrawerFromSale( double payment) { 
+		drawerAmount = drawerAmount + payment;
+		numberOfSales++;
+		if (drawerAmount > CASH_LIMIT) {
+			managerPull(drawerAmount - CASH_LIMIT);
+		}
+		return drawerAmount;
+	}
+	
+	public double updateDrawerFromReturn(double payment) {
+		if (payment > drawerAmount) {
+			managerDeposit(Math.max(drawerAmount - payment, MIN_CASH_DEPOSIT)); //either $200 or difference between payment and drawer amount
+		}
+
+		else {
+			drawerAmount = drawerAmount - payment;
+			numberOfReturns++;
+		}	
+		return drawerAmount;
+	}
+	
+	public void registerReport() {
+		System.out.println("Transaction Information for " + getRegisterID());
+		System.out.println("Total Sales Performed were" + getNumberOfSales());
+		System.out.println("Total Returns Performed were " + getNumberOfReturns());
+		System.out.println("Final Drawer Amount is " + getFinalDrawerAmount());
+	}
+}
+
