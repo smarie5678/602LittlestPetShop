@@ -6,6 +6,8 @@
 
 package possystem;
 import java.util.*;
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
 
 /**
  *
@@ -18,8 +20,10 @@ public class Item {
     private String description;
     private int quantity;
     private int threshold;
+    private int reorderAmt;
     private boolean reorder;
-    private Date lastOrderDate;
+    LocalDate lastOrderDate;
+    LocalDate endDate= lastOrderDate.plusYears(1);
     Item left;
     Item right;
            
@@ -29,10 +33,19 @@ public class Item {
         description = descr;
         this.quantity = quantity;
         this.price = price;
-        
-        
     }
-   
+   public Item(double upc, String descr, int quantity, double price, String supplier,int threshold, boolean reorder)
+   {
+       this.sku = upc;
+       this.description = descr;
+       this.quantity = quantity;
+       this.price = price;
+       this.supplier = supplier;
+       this.threshold = threshold;
+       this.reorder = reorder;
+     
+       
+   }
     public boolean checkReorder()
     {
         return reorder;
@@ -40,7 +53,23 @@ public class Item {
     
     public void updateQuantity(int amt)
     {
-        this.quantity = amt;
+        if(quantity < threshold)
+        
+        {
+          
+            
+          for (LocalDate Date = new LocalDate(); Date.isBefore(endDate); Date = Date.plusDays(1))
+          {
+          Date = lastOrderDate;
+            reorder =true;
+            reorderAmt = 50;
+           quantity = amt;
+            
+        }
+        }
+        else{
+            quantity = amt;
+        }
     }
     
     public double getPrice()
@@ -52,6 +81,20 @@ public class Item {
                 return description;
                 
             }
+    public void setSupplier(String newsupplier)
+    {
+       for (LocalDate Date = new LocalDate(); Date.isBefore(endDate); Date = Date.plusDays(1))
+          {
+              this.supplier = newsupplier;
+          }
+        
+    }
+    
+    public int getThreshold()
+    {
+        return threshold;
+    }
+    
     public int getQuantity()
     {
         return quantity;
@@ -64,6 +107,7 @@ public class Item {
     {
         this.price = newPrice;
     }
+   
      public void setThreshhold(int threshold)
      {
          this.threshold = threshold;
@@ -92,4 +136,3 @@ public class Item {
      }
     
     
-}
